@@ -1,13 +1,16 @@
-/* Panda continuous reader — supports e-hentai.org and exhentai.org */
+/* Panda continuous reader v2026.07.15.2 — e-hentai.org + exhentai.org */
 (function () {
   'use strict';
 
+  var PANDA_VERSION = '2026.07.15.2';
   if (window.__pandaReader) {
     var current = document.getElementById('panda-panel');
     if (current) current.scrollIntoView({ behavior: 'smooth' });
     return;
   }
   window.__pandaReader = true;
+  window.__pandaReaderVersion = PANDA_VERSION;
+  console.info('[Panda] continuous reader v' + PANDA_VERSION);
 
   var match = location.pathname.match(/^\/g\/(\d+)\/([\da-z]+)\/?/i);
   var grid = document.getElementById('gdt');
@@ -158,7 +161,7 @@
 
     var panel = make('div', { id: 'panda-panel' });
     var row = make('div', { className: 'row' });
-    row.appendChild(make('strong', {}, 'Panda 连续阅读'));
+    row.appendChild(make('strong', {}, 'Panda 连续阅读 v' + PANDA_VERSION));
     row.appendChild(make('label', { for: 'panda-from' }, '范围'));
     row.appendChild(make('input', { id: 'panda-from', type: 'number', min: '1', value: '1' }));
     row.appendChild(make('span', {}, '—'));
