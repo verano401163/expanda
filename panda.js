@@ -1,8 +1,8 @@
-/* Panda continuous reader v2026.07.15.2 — e-hentai.org + exhentai.org */
+/* Panda continuous reader v2026.07.15.3 — e-hentai.org + exhentai.org */
 (function () {
   'use strict';
 
-  var PANDA_VERSION = '2026.07.15.2';
+  var PANDA_VERSION = '2026.07.15.3';
   if (window.__pandaReader) {
     var current = document.getElementById('panda-panel');
     if (current) current.scrollIntoView({ behavior: 'smooth' });
@@ -143,7 +143,7 @@
   function buildUi() {
     var style = make('style', { id: 'panda-style' });
     style.textContent =
-      '#panda-panel{box-sizing:border-box;position:sticky;top:0;z-index:9999;margin:10px auto;' +
+      '#panda-panel{box-sizing:border-box;position:relative;z-index:1;margin:10px auto;' +
       'padding:10px 14px;max-width:980px;border:1px solid #77675d;border-radius:7px;' +
       'background:#34302d;color:#eee;box-shadow:0 2px 10px #0008;font:14px/1.5 Arial,sans-serif}' +
       '#panda-panel .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}' +
