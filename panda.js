@@ -1,197 +1,374 @@
-/*2019-9-19 5:24*/
-var exkey_public='b1d7d5acd649a01a1643124c8a0918a84483572xdf9724040';
-var exkey_private='d9a945052c952334dd5d252b0c7388963552014x0745cd567';
-function panda_exkeyset(){
-var exkey=prompt(panda_lang_q002,panda.getAttribute('exkey')?panda.getAttribute('exkey'):'');
-if(!exkey && exkey!==''){return;};
-panda_leapover(exkey);
-};
-function panda_leapover(exkey){
-if(!exkey){exkey=exkey_public;};
-document.cookie='ipb_member_id='+exkey.split('x')[0].substr(32)+';path=/;domain=.exhentai.org';
-document.cookie='ipb_pass_hash='+exkey.split('x')[0].substr(0,32)+';path=/;domain=.exhentai.org';
-document.cookie='igneous='+(exkey.split('x')[1]?exkey.split('x')[1]:'')+';path=/;domain=.exhentai.org';
-document.cookie='sk=;path=/;domain=.exhentai.org';
-document.cookie='yay=0;path=/;domain=.exhentai.org';
-var xhr=new XMLHttpRequest();
-xhr.open('GET','https://exhentai.org',true);
-xhr.onerror=function(){if(confirm(panda_lang_a001)){panda_leapover(exkey);};};
-xhr.onreadystatechange=function(){if(this.readyState===4 && this.status===200){
-if(!this.responseText.match(/<link(.*?)exhentai(.*?)>/)){panda_exkeyset();return;};
-if(window.location.pathname=='/favicon.ico'){window.location.href='/';}
-else{window.location.reload();};
-}};
-xhr.send(null);
-};
-function panda_recookie(){
-if(!document.cookie.match(/panda_sniff=1/)){return;};
-document.cookie='ipb_member_id='+document.cookie.match(/panda_user=(\d+)/)[1]+';path=/;domain=.exhentai.org';
-document.cookie='ipb_pass_hash='+document.cookie.match(/panda_pass=([\da-z]{32})/)[1]+';path=/;domain=.exhentai.org';
-document.cookie='igneous='+document.cookie.match(/panda_igneous=([\da-z]+)/)[1]+';path=/;domain=.exhentai.org';
-document.cookie='sk='+(document.cookie.match(/panda_sk=([\da-z]+)/)?document.cookie.match(/panda_sk=([\da-z]+)/)[1]:'')+';path=/;domain=.exhentai.org';
-document.cookie='yay=0;path=/;domain=.exhentai.org';
-document.cookie='panda_sniff=;path=/;domain=.exhentai.org';
-};
-function panda_sniffimg(run,func){
-if(!run){func();return;};
-var exkey=exkey_private;
-if(!document.cookie.match(/panda_sniff=1/)){
-document.cookie='panda_user='+document.cookie.match(/ipb_member_id=(\d+)/)[1]+';path=/;domain=.exhentai.org';
-document.cookie='panda_pass='+document.cookie.match(/ipb_pass_hash=([\da-z]{32})/)[1]+';path=/;domain=.exhentai.org';
-document.cookie='panda_igneous='+document.cookie.match(/igneous=([\da-z]+)/)[1]+';path=/;domain=.exhentai.org';
-document.cookie='panda_sk='+(document.cookie.match(/sk=([\da-z]+)/)?document.cookie.match(/sk=([\da-z]+)/)[1]:'')+';path=/;domain=.exhentai.org';
-document.cookie='yay=0;path=/;domain=.exhentai.org';
-document.cookie='panda_sniff=1;path=/;domain=.exhentai.org';
-};
-document.cookie='ipb_member_id='+exkey.split('x')[0].substr(32)+';path=/;domain=.exhentai.org';
-document.cookie='ipb_pass_hash='+exkey.split('x')[0].substr(0,32)+';path=/;domain=.exhentai.org';
-document.cookie='igneous='+(exkey.split('x')[1]?exkey.split('x')[1]:'')+';path=/;domain=.exhentai.org';
-document.cookie='sk=;path=/;domain=.exhentai.org';
-document.cookie='yay=0;path=/;domain=.exhentai.org';
-func();
-};
-function panda_loadpage(gid,token,numb,exec){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','https://exhentai.org/g/'+gid+'/'+token+'/?p='+(numb-1),true);
-xhr.onerror=function(){if(confirm(panda_lang_a001)){panda_loadpage(gid,token,numb,exec);}else{panda_lock=false;}};
-xhr.onreadystatechange=function(){if(this.readyState===4 && this.status===200){
-var prev=document.getElementsByClassName('ths')[1].innerHTML=='Normal'?this.responseText.match(/<div class="gdtm"(.*?)>(.*?)https:\/\/exhentai\.org\/s\/(\w+)\/(\d+)-(\d+)(.*?)<\/div>/g):this.responseText.match(/<div class="gdtl"(.*?)>(.*?)https:\/\/exhentai\.org\/s\/(\w+)\/(\d+)-(\d+)(.*?)<\/div>/g);
-var info={};
-prev.forEach(function(value){var preg=value.match(/https:\/\/exhentai\.org\/s\/(\w+)\/(\d+)-(\d+)/);info[preg[3]]=preg[1];});
-exec(info);
-}};
-xhr.send(null);
-};
-function panda_loadfile(gid,numb,hash,adds,exec){
-var xhr=new XMLHttpRequest();
-xhr.open('GET','https://exhentai.org/s/'+hash+'/'+gid+'-'+numb+'?'+adds,true);
-xhr.onerror=function(){exec(null);};
-xhr.onreadystatechange=function(){if(this.readyState===4 && this.status===200){
-var html=this.responseText;
-var info={};
-info.numb=numb;
-info.hash=hash;
-info.show=html.match(/id="img" src="(.*?)"/)[1];
-info.show=info.show.substr(0,info.show.lastIndexOf('/')+1);
-info.full=html.match(/href="(https:\/\/exhentai\.org\/fullimg.php(.*?))"/)?html.match(/href="(https:\/\/exhentai\.org\/fullimg.php(.*?))"/)[1].replace(/\&amp;/g,'\&'):info.show;
-info.adds=adds+'&nl='+html.match(/onclick="return nl\(\'(.*?)\'\)"/)[1];
-exec(info);
-}};
-xhr.send(null);
-};
-function panda_showlist(){
-var panda_filefrom=parseInt(document.getElementById('panda_filefrom').value);
-var panda_filefinl=parseInt(document.getElementById('panda_filefinl').value);
-var panda_fileqnty=parseInt(document.getElementById('panda_fileqnty').title);
-if(!panda_filefrom || panda_filefrom<0){panda_filefrom=1;};
-if(!panda_filefinl || panda_filefinl>panda_fileqnty){panda_filefinl=panda_fileqnty;};
-if(panda_filefrom>panda_filefinl){alert(panda_lang_a003);return;};
-document.getElementById('panda_filefrom').title=panda_filefrom;
-document.getElementById('panda_filefinl').title=panda_filefinl;
-var panda_pageconf=document.getElementsByClassName('ths');
-var panda_pageqnty=parseInt(panda_pageconf[0].innerHTML)*(panda_pageconf[1].innerHTML=='Normal'?10:5);
-var panda_pagefrom=Math.ceil(panda_filefrom/panda_pageqnty);
-var panda_pagefinl=Math.ceil(panda_filefinl/panda_pageqnty);
-var panda_hashmaps={};
-for(var numb=panda_pagefrom;numb<=panda_pagefinl;numb++){
-panda_loadpage(gid,token,numb,function(info){
-panda_hashmaps=Object.assign(panda_hashmaps,info);
-if(Math.ceil(Object.keys(panda_hashmaps).length/panda_pageqnty)==(panda_pagefinl-panda_pagefrom+1)){
-document.getElementById('panda_list').innerHTML='';
-document.getElementById('panda_prev').style.display='';
-document.getElementById('panda_next').style.display='';
-document.getElementById('panda_dock').style.display='';
-document.getElementById('panda_plus').scrollIntoView();
-if(document.cookie.match(/panda_orign=true/) && !panda.getAttribute('exkey')){
-for(var numb=panda_filefrom;numb<=panda_filefinl;numb++){panda_sniff[numb]=1;};
-};
-panda_sniffimg(Object.keys(panda_sniff).length,function(){
-for(var numb=panda_filefrom;numb<=panda_filefinl;numb++){
-document.getElementById('panda_list').innerHTML+='<img id="panda_file_'+numb+'" src="" alt="" style="display:block;margin:4px auto;max-width:100%;min-width:100px;min-height:100px;background:#000;" onclick="panda_showfile('+numb+',\''+panda_hashmaps[numb]+'\',this.alt);" />';
-document.getElementById('panda_file_'+numb).click();
-};
-});
-};
-});
-};
-};
-function panda_showfile(numb,hash,adds){
-panda_sniffimg((document.cookie.match(/panda_orign=true/) && !panda.getAttribute('exkey') && adds),function(){
-panda_loadfile(gid,numb,hash,adds,function(info){
-if(!info){return;};
-var file=document.getElementById('panda_file_'+info.numb);
-if(Object.keys(panda_sniff).length){
-file.alt=info.adds;
-var img=new Image();
-img.src=info.full;
-img.onerror=function(){if(panda_sniff[numb]){delete panda_sniff[numb];};if(!Object.keys(panda_sniff).length){panda_recookie();};};
-img.onload=function(){file.src=img.src;if(panda_sniff[numb]){delete panda_sniff[numb];};if(!Object.keys(panda_sniff).length){panda_recookie();};};
-}
-else{
-file.alt=info.adds;
-file.src=document.cookie.match(/panda_orign=true/)?info.full:info.show;
-};
-});
-});
-};
-function panda_showprev(){
-var panda_fileqnty=parseInt(document.getElementById('panda_fileqnty').title);
-var panda_readfrom=parseInt(document.getElementById('panda_filefrom').title);
-var panda_readfinl=parseInt(document.getElementById('panda_filefinl').title);
-if(panda_readfrom==1){alert(panda_lang_a004);return;};
-var panda_readqnty=prompt(panda_lang_q001,panda_readfinl-panda_readfrom+1);
-if(!panda_readqnty && panda_readqnty!==''){return;};
-panda_readqnty=parseInt(panda_readqnty);
-if(!panda_readqnty || panda_readqnty<0){panda_readqnty=panda_fileqnty;};
-var panda_filefrom=panda_readfrom-panda_readqnty;
-var panda_filefinl=panda_readfrom-1;
-if(panda_filefrom<1){panda_filefrom=1;};
-document.getElementById('panda_filefrom').value=panda_filefrom;
-document.getElementById('panda_filefinl').value=panda_filefinl;
-panda_showlist();
-};
-function panda_shownext(){
-var panda_fileqnty=parseInt(document.getElementById('panda_fileqnty').title);
-var panda_readfrom=parseInt(document.getElementById('panda_filefrom').title);
-var panda_readfinl=parseInt(document.getElementById('panda_filefinl').title);
-if(panda_readfinl==panda_fileqnty){alert(panda_lang_a004);return;};
-var panda_readqnty=prompt(panda_lang_q001,panda_readfinl-panda_readfrom+1);
-if(!panda_readqnty && panda_readqnty!==''){return;};
-panda_readqnty=parseInt(panda_readqnty);
-if(!panda_readqnty || panda_readqnty<0){panda_readqnty=panda_fileqnty;};
-var panda_filefrom=panda_readfinl+1;
-var panda_filefinl=panda_readfinl+panda_readqnty;
-if(panda_filefinl>panda_fileqnty){panda_filefinl=panda_fileqnty;};
-document.getElementById('panda_filefrom').value=panda_filefrom;
-document.getElementById('panda_filefinl').value=panda_filefinl;
-panda_showlist();
-};
-function panda_plusfunc(){
-var navi=document.getElementsByClassName('gpc')[0].innerHTML.match(/Showing ([\d,]+) - ([\d,]+) of ([\d,]+) images/);
-var code=document.createElement('div');
-/*code.innerHTML='<div id="panda_plus" class="gm" style="text-align:center;"><h3>'+panda_lang_p001+'&nbsp;<input id="panda_filefrom" style="width:50px;" value="'+navi[1].replace(/,/g,'')+'" />&nbsp;<span id="panda_fileqnty" title="'+navi[3].replace(/,/g,'')+'">-</span>&nbsp;<input id="panda_filefinl" size="3" style="width:50px;" value="'+navi[2].replace(/,/g,'')+'" />&nbsp;&nbsp;'+panda_lang_p002+'&nbsp;<input id="panda_size" style="width:50px;" value="'+panda_width+'" onmouseout="panda_width=parseInt(document.getElementById(\'panda_size\').value);document.cookie=\'panda_width=\'+panda_width+\';path=/;domain=.exhentai.org\';document.getElementById(\'panda_list\').style.width=panda_width+\'px\';" />&nbsp;&nbsp;'+panda_lang_p003+'&nbsp;<input type="checkbox" '+(document.cookie.match(/panda_orign=true/)?'checked="checked"':'')+' onclick="if(this.checked && !panda.getAttribute(\'exkey\')){alert(panda_lang_q003);}else{panda_sniff={};panda_recookie();};document.cookie=\'panda_orign=\'+this.checked+\';path=/;domain=.exhentai.org\';if(document.getElementById(\'panda_list\').innerHTML){panda_showlist();};" />&nbsp;&nbsp;<a href="javascript:;" onclick="panda_exkeyset();" style="text-decoration:none;">@</a>&nbsp;&nbsp;<a href="'+panda.src.substr(0,panda.src.lastIndexOf('/'))+'" target="_blank" style="text-decoration:none;">?</a></h3><h3><a id="panda_prev" href="javascript:;" onclick="panda_showprev();" style="text-decoration:none;display:none;">&lt;&lt;&lt;</a>&nbsp;&nbsp;&nbsp;<a href="javascript:;" onclick="panda_showlist();" style="text-decoration:none;">[&nbsp;&#9660;&nbsp;]</a>&nbsp;&nbsp;&nbsp;<a id="panda_next" href="javascript:;" onclick="panda_shownext();" style="text-decoration:none;display:none;">&gt;&gt;&gt;</a></h3></div><div id="panda_list" style="margin:10px auto;width:'+panda_width+'px;max-width:100%;"></div><div id="panda_dock" class="gm" style="text-align:center;display:none;"><h3><a href="javascript:;" onclick="panda_showprev();" style="text-decoration:none;">&lt;&lt;&lt;</a>&nbsp;&nbsp;&nbsp;<a href="#panda_plus" style="text-decoration:none;">[&nbsp;&#9650;&nbsp;]</a>&nbsp;&nbsp;&nbsp;<a href="javascript:;" onclick="panda_shownext();" style="text-decoration:none;">&gt;&gt;&gt;</a></h3></div>';*/
-code.innerHTML='<div id="panda_plus" class="gm" style="text-align:center;"><h3>'+panda_lang_p001+'&nbsp;<input id="panda_filefrom" style="width:50px;" value="'+navi[1].replace(/,/g,'')+'" />&nbsp;<span id="panda_fileqnty" title="'+navi[3].replace(/,/g,'')+'">-</span>&nbsp;<input id="panda_filefinl" size="3" style="width:50px;" value="50" />&nbsp;&nbsp;'+panda_lang_p002+'&nbsp;<input id="panda_size" style="width:50px;" value="'+panda_width+'" onmouseout="panda_width=parseInt(document.getElementById(\'panda_size\').value);document.cookie=\'panda_width=\'+panda_width+\';path=/;domain=.exhentai.org\';document.getElementById(\'panda_list\').style.width=panda_width+\'px\';" />&nbsp;&nbsp;'+panda_lang_p003+'&nbsp;<input type="checkbox" '+(document.cookie.match(/panda_orign=true/)?'checked="checked"':'')+' onclick="if(this.checked && !panda.getAttribute(\'exkey\')){alert(panda_lang_q003);}else{panda_sniff={};panda_recookie();};document.cookie=\'panda_orign=\'+this.checked+\';path=/;domain=.exhentai.org\';if(document.getElementById(\'panda_list\').innerHTML){panda_showlist();};" />&nbsp;&nbsp;<a href="javascript:;" onclick="panda_exkeyset();" style="text-decoration:none;">@</a>&nbsp;&nbsp;<a href="'+panda.src.substr(0,panda.src.lastIndexOf('/'))+'" target="_blank" style="text-decoration:none;">?</a></h3><h3><a id="panda_prev" href="javascript:;" onclick="panda_showprev();" style="text-decoration:none;display:none;">&lt;&lt;&lt;</a>&nbsp;&nbsp;&nbsp;<a href="javascript:;" onclick="panda_showlist();" style="text-decoration:none;">[&nbsp;&#9660;&nbsp;]</a>&nbsp;&nbsp;&nbsp;<a id="panda_next" href="javascript:;" onclick="panda_shownext();" style="text-decoration:none;display:none;">&gt;&gt;&gt;</a></h3></div><div id="panda_list" style="margin:10px auto;width:'+panda_width+'px;max-width:100%;"></div><div id="panda_dock" class="gm" style="text-align:center;display:none;"><h3><a href="javascript:;" onclick="panda_showprev();" style="text-decoration:none;">&lt;&lt;&lt;</a>&nbsp;&nbsp;&nbsp;<a href="#panda_plus" style="text-decoration:none;">[&nbsp;&#9650;&nbsp;]</a>&nbsp;&nbsp;&nbsp;<a href="javascript:;" onclick="panda_shownext();" style="text-decoration:none;">&gt;&gt;&gt;</a></h3></div>';
-var gtbn=document.getElementById('cdiv');
-gtbn.parentNode.insertBefore(code,gtbn);
-};
-var panda=document.getElementsByTagName('script')[document.getElementsByTagName('script').length-1];
-var panda_zhcn=(navigator.language && navigator.language=='zh-CN')?true:false;
-var panda_lang_a001=panda_zhcn?'网络错误，是否重试？':'Network error, retry?';
-var panda_lang_a002=panda_zhcn?'进入里站？':'Go to exhentai?';
-var panda_lang_a003=panda_zhcn?'输入有误':'Incorrect input';
-var panda_lang_a004=panda_zhcn?'到达边界':'Edge reached';
-var panda_lang_p001=panda_zhcn?'范围':'Range';
-var panda_lang_p002=panda_zhcn?'宽度':'Width';
-var panda_lang_p003=panda_zhcn?'原图':'Original';
-var panda_lang_q001=panda_zhcn?'加载多少张图片？（留空读取至末尾）':'How many pictures to load? (Leave blank to end)';
-var panda_lang_q002=panda_zhcn?'请输入新exkey：（留空使用公共账号）':'Account invalid, input new exkey: (Leave blank to use public account)';
-var panda_lang_q003=panda_zhcn?'公共账号无法加载原图，嗅探模式将被开启（很慢）':'Public account can not load original image, sniff mode will be used (Slow)';
-var panda_width=document.cookie.match(/panda_width=[\d]+/)?document.cookie.match(/panda_width=(\d+)/)[1]:800;
-var panda_sniff={};
-window.addEventListener('beforeunload',function(){panda_recookie();});
-if(document.domain!='exhentai.org'){if(confirm(panda_lang_a002)){window.location.href='https://exhentai.org/favicon.ico';}}
-else if(document.getElementById('gdt') && !document.getElementById('panda_plus')){panda_plusfunc();}
-else if(document.getElementById('img')){window.nl=function(adds){panda_loadfile(gid,window.location.href.match(/https:\/\/exhentai\.org\/s\/(\w+)\/(\d+)-(\d+)/)[3],window.location.href.match(/https:\/\/exhentai\.org\/s\/(\w+)\/(\d+)-(\d+)/)[1],adds,function(info){if(!info){return;};document.getElementById('img').src=info.show;document.getElementById('loadfail').setAttribute('onclick','return nl(\''+info.adds+'\')');});}}
-else if(window.location.pathname=='/fullimg.php' && document.documentElement.outerHTML.match(/err/)){document.body.innerHTML='<img id="img" src="" alt="Loading..." style="max-width:100%;" />';panda_sniffimg(true,function(){var img=new Image();img.src=window.location.href;img.onerror=function(){panda_recookie();};img.onload=function(){document.getElementById('img').src=img.src;panda_recookie();};});}
-else if(window.location.pathname=='/favicon.ico' || document.getElementsByTagName('img')[0].src=='https://exhentai.org/img/kokomade.jpg'){panda_leapover(panda.getAttribute('exkey'));}
-else{console.log('!-Panda-!');};
+/* Panda continuous reader v2026.07.15.2 — e-hentai.org + exhentai.org */
+(function () {
+  'use strict';
+
+  var PANDA_VERSION = '2026.07.15.2';
+  if (window.__pandaReader) {
+    var current = document.getElementById('panda-panel');
+    if (current) current.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  window.__pandaReader = true;
+  window.__pandaReaderVersion = PANDA_VERSION;
+  console.info('[Panda] continuous reader v' + PANDA_VERSION);
+
+  var match = location.pathname.match(/^\/g\/(\d+)\/([\da-z]+)\/?/i);
+  var grid = document.getElementById('gdt');
+  if (!/(^|\.)(e-hentai\.org|exhentai\.org)$/i.test(location.hostname) || !match || !grid) {
+    alert('请在 e-hentai.org 或 exhentai.org 的画廊缩略图页面运行 Panda。');
+    return;
+  }
+
+  var state = {
+    gid: match[1], token: match[2], total: 0, all: [], selected: [],
+    failed: [], loaded: 0, running: false, stopped: false, controller: null
+  };
+  var CONCURRENCY = 3;
+  var REQUEST_DELAY = 180;
+  var RETRIES = 3;
+
+  function make(tag, attrs, text) {
+    var item = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      if (key === 'className') item.className = attrs[key];
+      else if (key === 'checked' || key === 'disabled') item[key] = attrs[key];
+      else item.setAttribute(key, attrs[key]);
+    });
+    if (text != null) item.textContent = text;
+    return item;
+  }
+
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function setStatus(text) {
+    document.getElementById('panda-status').textContent = text;
+  }
+
+  function totalFrom(doc) {
+    var texts = doc.querySelectorAll('.gpc');
+    for (var i = 0; i < texts.length; i += 1) {
+      var found = texts[i].textContent.match(/of\s+([\d,]+)\s+images/i);
+      if (found) return Number(found[1].replace(/,/g, ''));
+    }
+    var rows = doc.querySelectorAll('#gdd tr');
+    for (var j = 0; j < rows.length; j += 1) {
+      var fallback = rows[j].textContent.match(/Length:\s*([\d,]+)\s+pages/i);
+      if (fallback) return Number(fallback[1].replace(/,/g, ''));
+    }
+    return 0;
+  }
+
+  function galleryLinks(doc) {
+    var unique = new Map();
+    Array.prototype.forEach.call(doc.querySelectorAll('#gdt a[href*="/s/"]'), function (anchor) {
+      var url;
+      try {
+        url = new URL(anchor.getAttribute('href'), location.origin);
+      } catch (_) {
+        return;
+      }
+      var parts = url.pathname.match(/^\/s\/([\da-z]+)\/(\d+)-(\d+)/i);
+      if (!parts || parts[2] !== state.gid) return;
+      var number = Number(parts[3]);
+      unique.set(number, { number: number, pageUrl: url.href });
+    });
+    return Array.from(unique.values()).sort(function (a, b) { return a.number - b.number; });
+  }
+
+  function imageUrlFrom(html, pageUrl, preferOriginal) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var image = doc.querySelector('img#img');
+    var original = doc.querySelector('a[href*="/fullimg/"],a[href*="/fullimg.php"]');
+    var source = preferOriginal && original
+      ? original.getAttribute('href')
+      : image && image.getAttribute('src');
+    if (!source && original) source = original.getAttribute('href');
+    if (!source) throw new Error('图片页中找不到 #img 或原图链接');
+    return new URL(source, pageUrl).href;
+  }
+
+  async function request(url, attempt) {
+    attempt = attempt || 1;
+    try {
+      var response = await fetch(url, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: state.controller.signal,
+        headers: { Accept: 'text/html,application/xhtml+xml' }
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      var html = await response.text();
+      if (!html || /temporarily banned/i.test(html)) throw new Error('站点返回限制页面');
+      return html;
+    } catch (error) {
+      if (error.name === 'AbortError' || attempt >= RETRIES) throw error;
+      await sleep(700 * attempt);
+      return request(url, attempt + 1);
+    }
+  }
+
+  async function pool(items, concurrency, worker) {
+    var cursor = 0;
+    async function consume() {
+      while (cursor < items.length && !state.stopped) {
+        var index = cursor;
+        cursor += 1;
+        await worker(items[index], index);
+      }
+    }
+    var workers = [];
+    for (var i = 0; i < Math.min(concurrency, items.length); i += 1) workers.push(consume());
+    await Promise.all(workers);
+  }
+
+  function hideOriginalGrid() {
+    var hidden = document.getElementById('panda-hide').checked;
+    grid.style.display = hidden ? 'none' : '';
+    Array.prototype.forEach.call(document.querySelectorAll('.gtb'), function (item) {
+      item.style.display = hidden ? 'none' : '';
+    });
+  }
+
+  function setControls(running) {
+    state.running = running;
+    document.getElementById('panda-start').disabled = running;
+    document.getElementById('panda-stop').disabled = !running;
+    ['panda-from', 'panda-to', 'panda-original'].forEach(function (id) {
+      document.getElementById(id).disabled = running;
+    });
+  }
+
+  function buildUi() {
+    var style = make('style', { id: 'panda-style' });
+    style.textContent =
+      '#panda-panel{box-sizing:border-box;position:sticky;top:0;z-index:9999;margin:10px auto;' +
+      'padding:10px 14px;max-width:980px;border:1px solid #77675d;border-radius:7px;' +
+      'background:#34302d;color:#eee;box-shadow:0 2px 10px #0008;font:14px/1.5 Arial,sans-serif}' +
+      '#panda-panel .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}' +
+      '#panda-panel input[type=number]{width:65px;padding:3px}#panda-panel button{padding:5px 11px}' +
+      '#panda-status{margin-top:6px;min-height:21px}#panda-progress{width:100%;height:12px}' +
+      '#panda-list{margin:12px auto;max-width:1280px;text-align:center}' +
+      '.panda-card{position:relative;margin:0 auto 12px;min-height:100px}' +
+      '.panda-card img{display:block;margin:auto;max-width:100%;height:auto;min-width:80px;' +
+      'min-height:80px;background:#111}.panda-no{position:absolute;left:8px;top:8px;padding:2px 7px;' +
+      'border-radius:3px;background:#000b;color:#fff;font:13px Arial}' +
+      '.panda-error{box-sizing:border-box;margin:auto;padding:45px 12px;max-width:720px;' +
+      'border:1px dashed #b66;background:#2a2020;color:#f2b5b5}' +
+      '@media(max-width:600px){#panda-panel{position:relative;margin:6px;padding:8px}.panda-card{margin-bottom:6px}}';
+    document.head.appendChild(style);
+
+    var panel = make('div', { id: 'panda-panel' });
+    var row = make('div', { className: 'row' });
+    row.appendChild(make('strong', {}, 'Panda 连续阅读 v' + PANDA_VERSION));
+    row.appendChild(make('label', { for: 'panda-from' }, '范围'));
+    row.appendChild(make('input', { id: 'panda-from', type: 'number', min: '1', value: '1' }));
+    row.appendChild(make('span', {}, '—'));
+    row.appendChild(make('input', { id: 'panda-to', type: 'number', min: '1', value: '1' }));
+
+    var originalLabel = make('label');
+    originalLabel.appendChild(make('input', { id: 'panda-original', type: 'checkbox' }));
+    originalLabel.appendChild(document.createTextNode(' 优先原图'));
+    row.appendChild(originalLabel);
+
+    var hideLabel = make('label');
+    hideLabel.appendChild(make('input', { id: 'panda-hide', type: 'checkbox', checked: true }));
+    hideLabel.appendChild(document.createTextNode(' 隐藏缩略图'));
+    row.appendChild(hideLabel);
+
+    row.appendChild(make('button', { id: 'panda-start', type: 'button' }, '开始加载'));
+    row.appendChild(make('button', { id: 'panda-stop', type: 'button', disabled: true }, '停止'));
+    row.appendChild(make('button', { id: 'panda-retry', type: 'button', disabled: true }, '重试失败'));
+    panel.appendChild(row);
+    panel.appendChild(make('div', { id: 'panda-status' }, '正在分析画廊…'));
+    panel.appendChild(make('progress', { id: 'panda-progress', value: '0', max: '1' }));
+
+    grid.parentNode.insertBefore(panel, grid);
+    grid.parentNode.insertBefore(make('div', { id: 'panda-list' }), grid.nextSibling);
+    document.getElementById('panda-hide').addEventListener('change', hideOriginalGrid);
+    document.getElementById('panda-start').addEventListener('click', start);
+    document.getElementById('panda-stop').addEventListener('click', stop);
+    document.getElementById('panda-retry').addEventListener('click', retryFailed);
+  }
+
+  async function collectAllLinks() {
+    var first = galleryLinks(document);
+    state.total = totalFrom(document);
+    if (!state.total || !first.length) throw new Error('无法识别图片总数或缩略图链接');
+
+    var maxPage = 0;
+    Array.prototype.forEach.call(document.querySelectorAll('.ptt a[href],.ptb a[href]'), function (anchor) {
+      try {
+        var value = Number(new URL(anchor.getAttribute('href'), location.origin).searchParams.get('p') || 0);
+        if (value > maxPage) maxPage = value;
+      } catch (_) {}
+    });
+    var pageCount = Math.max(maxPage + 1, Math.ceil(state.total / first.length));
+    var currentPage = Number(new URL(location.href).searchParams.get('p') || 0);
+    var all = new Map(first.map(function (entry) { return [entry.number, entry]; }));
+    var pages = [];
+    for (var p = 0; p < pageCount; p += 1) if (p !== currentPage) pages.push(p);
+
+    var complete = 1;
+    setStatus('正在读取缩略图分页：1/' + pageCount);
+    await pool(pages, Math.min(3, CONCURRENCY), async function (page) {
+      var url = new URL('/g/' + state.gid + '/' + state.token + '/', location.origin);
+      if (page) url.searchParams.set('p', String(page));
+      var doc = new DOMParser().parseFromString(await request(url.href), 'text/html');
+      galleryLinks(doc).forEach(function (entry) { all.set(entry.number, entry); });
+      complete += 1;
+      setStatus('正在读取缩略图分页：' + complete + '/' + pageCount);
+      await sleep(REQUEST_DELAY);
+    });
+
+    var entries = Array.from(all.values()).sort(function (a, b) { return a.number - b.number; });
+    if (entries.length !== state.total) {
+      throw new Error('应找到 ' + state.total + ' 个图片页，实际找到 ' + entries.length + ' 个');
+    }
+    return entries;
+  }
+
+  function createCards(entries) {
+    var list = document.getElementById('panda-list');
+    list.innerHTML = '';
+    entries.forEach(function (entry) {
+      var card = make('div', { className: 'panda-card', id: 'panda-page-' + entry.number });
+      var link = make('a', { href: entry.pageUrl, target: '_blank', rel: 'noopener' });
+      link.appendChild(make('img', {
+        alt: '第 ' + entry.number + ' 页（等待加载）',
+        loading: 'lazy',
+        decoding: 'async'
+      }));
+      card.appendChild(link);
+      card.appendChild(make('span', { className: 'panda-no' }, String(entry.number)));
+      list.appendChild(card);
+    });
+  }
+
+  function showFailure(entry, error) {
+    var card = document.getElementById('panda-page-' + entry.number);
+    if (!card) return;
+    var image = card.querySelector('img');
+    if (image) image.remove();
+    var old = card.querySelector('.panda-error');
+    if (old) old.remove();
+    card.querySelector('a').appendChild(make('div', { className: 'panda-error' },
+      '第 ' + entry.number + ' 页加载失败：' + (error.message || error) + '（点击打开图片页）'));
+  }
+
+  function updateProgress() {
+    var progress = document.getElementById('panda-progress');
+    progress.max = Math.max(1, state.selected.length);
+    progress.value = Math.min(state.loaded, state.selected.length);
+    setStatus('已解析 ' + state.loaded + '/' + state.selected.length +
+      (state.failed.length ? '，失败 ' + state.failed.length + ' 张' : ''));
+  }
+
+  async function loadOne(entry, preferOriginal) {
+    try {
+      var source = imageUrlFrom(await request(entry.pageUrl), entry.pageUrl, preferOriginal);
+      var image = document.querySelector('#panda-page-' + entry.number + ' img');
+      if (image) {
+        image.alt = '第 ' + entry.number + ' 页';
+        image.src = source;
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        state.failed.push(entry);
+        showFailure(entry, error);
+      }
+    } finally {
+      state.loaded += 1;
+      updateProgress();
+      await sleep(REQUEST_DELAY);
+    }
+  }
+
+  function requestedRange() {
+    var from = Math.max(1, Number(document.getElementById('panda-from').value) || 1);
+    var to = Math.min(state.total, Number(document.getElementById('panda-to').value) || state.total);
+    if (from > to) throw new Error('起始页不能大于结束页');
+    return { from: from, to: to };
+  }
+
+  async function start() {
+    if (state.running) return;
+    state.stopped = false;
+    state.failed = [];
+    state.loaded = 0;
+    state.controller = new AbortController();
+    setControls(true);
+    document.getElementById('panda-retry').disabled = true;
+    hideOriginalGrid();
+
+    try {
+      if (!state.all.length) state.all = await collectAllLinks();
+      var range = requestedRange();
+      state.selected = state.all.filter(function (entry) {
+        return entry.number >= range.from && entry.number <= range.to;
+      });
+      createCards(state.selected);
+      var preferOriginal = document.getElementById('panda-original').checked;
+      setStatus('找到 ' + state.selected.length + ' 张，开始解析图片页…');
+      await pool(state.selected, CONCURRENCY, function (entry) {
+        return loadOne(entry, preferOriginal);
+      });
+      if (state.stopped) setStatus('已停止：完成 ' + state.loaded + '/' + state.selected.length);
+      else if (state.failed.length) {
+        setStatus('加载完成，失败 ' + state.failed.length + ' 张，可点击“重试失败”');
+      } else setStatus('加载完成：' + state.selected.length + ' 张');
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        setStatus('运行失败：' + (error.message || error));
+        console.error('[Panda]', error);
+      }
+    } finally {
+      setControls(false);
+      document.getElementById('panda-retry').disabled = !state.failed.length;
+    }
+  }
+
+  function stop() {
+    state.stopped = true;
+    if (state.controller) state.controller.abort();
+    setStatus('正在停止…');
+  }
+
+  async function retryFailed() {
+    if (state.running || !state.failed.length) return;
+    var retry = state.failed.slice();
+    state.failed = [];
+    state.selected = retry;
+    state.loaded = 0;
+    state.stopped = false;
+    state.controller = new AbortController();
+    setControls(true);
+    retry.forEach(function (entry) {
+      var card = document.getElementById('panda-page-' + entry.number);
+      var error = card && card.querySelector('.panda-error');
+      if (error) {
+        error.remove();
+        card.querySelector('a').appendChild(make('img', {
+          alt: '第 ' + entry.number + ' 页（重试中）', loading: 'lazy', decoding: 'async'
+        }));
+      }
+    });
+    await pool(retry, CONCURRENCY, function (entry) {
+      return loadOne(entry, document.getElementById('panda-original').checked);
+    });
+    setControls(false);
+    document.getElementById('panda-retry').disabled = !state.failed.length;
+    setStatus(state.failed.length ? '重试后仍失败 ' + state.failed.length + ' 张' : '重试完成，全部成功');
+  }
+
+  buildUi();
+  state.total = totalFrom(document);
+  ['panda-from', 'panda-to'].forEach(function (id) {
+    document.getElementById(id).max = state.total || 1;
+  });
+  document.getElementById('panda-to').value = state.total || 1;
+  hideOriginalGrid();
+  setStatus(state.total ? '检测到 ' + state.total + ' 张图片，即将自动加载…' : '准备加载…');
+  setTimeout(start, 300);
+}());
