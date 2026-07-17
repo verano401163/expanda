@@ -1,8 +1,8 @@
-/* Panda continuous reader v2026.07.17.2 — e-hentai.org + exhentai.org */
+/* Panda continuous reader v2026.07.17.3 — e-hentai.org + exhentai.org */
 (function () {
   'use strict';
 
-  var PANDA_VERSION = '2026.07.17.2';
+  var PANDA_VERSION = '2026.07.17.3';
   if (window.__pandaReader) {
     var current = document.getElementById('panda-panel');
     if (current) current.scrollIntoView({ behavior: 'smooth' });
@@ -20,8 +20,8 @@
   }
 
   var state = {
-    gid: match[1], token: match[2], total: 0, all: [], selected: [],
-    failed: [], loaded: 0, running: false, stopped: false, controller: null
+    gid: match[1], token: match[2], total: 0, selected: [], pageSize: 0,
+    pageCache: new Map(), failed: [], loaded: 0, running: false, stopped: false, controller: null
   };
   var CONCURRENCY = 3;
   var REQUEST_DELAY = 180;
@@ -239,6 +239,7 @@
   }
 
   async function ensurePageSize() {
+    if (!(state.pageCache instanceof Map)) throw new Error('分页缓存初始化失败，请刷新页面后重新注入脚本');
     if (state.pageSize) return;
     var currentPage = Number(new URL(location.href).searchParams.get('p') || 0);
     var visible = shownRange(document);
