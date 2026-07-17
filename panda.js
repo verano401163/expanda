@@ -1,8 +1,8 @@
-/* Panda continuous reader v2026.07.15.3 — e-hentai.org + exhentai.org */
+/* Panda continuous reader v2026.07.17.2 — e-hentai.org + exhentai.org */
 (function () {
   'use strict';
 
-  var PANDA_VERSION = '2026.07.15.3';
+  var PANDA_VERSION = '2026.07.17.2';
   if (window.__pandaReader) {
     var current = document.getElementById('panda-panel');
     if (current) current.scrollIntoView({ behavior: 'smooth' });
@@ -26,6 +26,7 @@
   var CONCURRENCY = 3;
   var REQUEST_DELAY = 180;
   var RETRIES = 3;
+  var RANGE_SIZE = 40;
 
   function make(tag, attrs, text) {
     var item = document.createElement(tag);
@@ -135,9 +136,33 @@
     state.running = running;
     document.getElementById('panda-start').disabled = running;
     document.getElementById('panda-stop').disabled = !running;
-    ['panda-from', 'panda-to', 'panda-original'].forEach(function (id) {
+    ['panda-from', 'panda-to', 'panda-original', 'panda-prev-group', 'panda-next-group'].forEach(function (id) {
       document.getElementById(id).disabled = running;
     });
+    if (!running) updateRangeButtons();
+  }
+
+  function updateRangeButtons() {
+    if (state.running) return;
+    var from = Number(document.getElementById('panda-from').value) || 1;
+    var to = Number(document.getElementById('panda-to').value) || Math.min(RANGE_SIZE, state.total);
+    document.getElementById('panda-prev-group').disabled = from <= 1;
+    document.getElementById('panda-next-group').disabled = !state.total || to >= state.total;
+  }
+
+  function setRange(from) {
+    from = Math.max(1, Math.min(Number(from) || 1, state.total || 1));
+    var to = Math.min(from + RANGE_SIZE - 1, state.total || 1);
+    document.getElementById('panda-from').value = from;
+    document.getElementById('panda-to').value = to;
+    updateRangeButtons();
+    setStatus('已选择范围 ' + from + '–' + to + '，确认设置后点击“加载此范围”');
+  }
+
+  function shiftRange(direction) {
+    var from = Number(document.getElementById('panda-from').value) || 1;
+    var to = Number(document.getElementById('panda-to').value) || Math.min(RANGE_SIZE, state.total);
+    setRange(direction < 0 ? Math.max(1, from - RANGE_SIZE) : Math.min(state.total, to + 1));
   }
 
   function buildUi() {
@@ -177,7 +202,9 @@
     hideLabel.appendChild(document.createTextNode(' 隐藏缩略图'));
     row.appendChild(hideLabel);
 
-    row.appendChild(make('button', { id: 'panda-start', type: 'button' }, '开始加载'));
+    row.appendChild(make('button', { id: 'panda-prev-group', type: 'button', disabled: true }, '上一组'));
+    row.appendChild(make('button', { id: 'panda-next-group', type: 'button', disabled: true }, '下一组'));
+    row.appendChild(make('button', { id: 'panda-start', type: 'button' }, '加载此范围'));
     row.appendChild(make('button', { id: 'panda-stop', type: 'button', disabled: true }, '停止'));
     row.appendChild(make('button', { id: 'panda-retry', type: 'button', disabled: true }, '重试失败'));
     panel.appendChild(row);
@@ -187,46 +214,78 @@
     grid.parentNode.insertBefore(panel, grid);
     grid.parentNode.insertBefore(make('div', { id: 'panda-list' }), grid.nextSibling);
     document.getElementById('panda-hide').addEventListener('change', hideOriginalGrid);
+    document.getElementById('panda-prev-group').addEventListener('click', function () { shiftRange(-1); });
+    document.getElementById('panda-next-group').addEventListener('click', function () { shiftRange(1); });
+    document.getElementById('panda-from').addEventListener('change', updateRangeButtons);
+    document.getElementById('panda-to').addEventListener('change', updateRangeButtons);
     document.getElementById('panda-start').addEventListener('click', start);
     document.getElementById('panda-stop').addEventListener('click', stop);
     document.getElementById('panda-retry').addEventListener('click', retryFailed);
   }
 
-  async function collectAllLinks() {
-    var first = galleryLinks(document);
-    state.total = totalFrom(document);
-    if (!state.total || !first.length) throw new Error('无法识别图片总数或缩略图链接');
+  function shownRange(doc) {
+    var texts = doc.querySelectorAll('.gpc');
+    for (var i = 0; i < texts.length; i += 1) {
+      var found = texts[i].textContent.match(/Showing\s+([\d,]+)\s+-\s+([\d,]+)/i);
+      if (found) return { from: Number(found[1].replace(/,/g, '')), to: Number(found[2].replace(/,/g, '')) };
+    }
+    return null;
+  }
 
-    var maxPage = 0;
-    Array.prototype.forEach.call(document.querySelectorAll('.ptt a[href],.ptb a[href]'), function (anchor) {
-      try {
-        var value = Number(new URL(anchor.getAttribute('href'), location.origin).searchParams.get('p') || 0);
-        if (value > maxPage) maxPage = value;
-      } catch (_) {}
-    });
-    var pageCount = Math.max(maxPage + 1, Math.ceil(state.total / first.length));
+  function galleryPageUrl(page) {
+    var url = new URL('/g/' + state.gid + '/' + state.token + '/', location.origin);
+    if (page) url.searchParams.set('p', String(page));
+    return url.href;
+  }
+
+  async function ensurePageSize() {
+    if (state.pageSize) return;
     var currentPage = Number(new URL(location.href).searchParams.get('p') || 0);
-    var all = new Map(first.map(function (entry) { return [entry.number, entry]; }));
-    var pages = [];
-    for (var p = 0; p < pageCount; p += 1) if (p !== currentPage) pages.push(p);
+    var visible = shownRange(document);
+    var currentEntries = galleryLinks(document);
+    if (!visible || !currentEntries.length) throw new Error('无法识别当前缩略图分页');
+    state.pageCache.set(currentPage, currentEntries);
+    if (currentPage === 0 || visible.to < state.total) {
+      state.pageSize = visible.to - visible.from + 1;
+      return;
+    }
+    setStatus('正在读取第一个缩略图分页以确定分页大小…');
+    var firstDoc = new DOMParser().parseFromString(await request(galleryPageUrl(0)), 'text/html');
+    var firstRange = shownRange(firstDoc);
+    var firstEntries = galleryLinks(firstDoc);
+    if (!firstRange || !firstEntries.length) throw new Error('无法识别第一个缩略图分页');
+    state.pageSize = firstRange.to - firstRange.from + 1;
+    state.pageCache.set(0, firstEntries);
+  }
 
-    var complete = 1;
-    setStatus('正在读取缩略图分页：1/' + pageCount);
-    await pool(pages, Math.min(3, CONCURRENCY), async function (page) {
-      var url = new URL('/g/' + state.gid + '/' + state.token + '/', location.origin);
-      if (page) url.searchParams.set('p', String(page));
-      var doc = new DOMParser().parseFromString(await request(url.href), 'text/html');
-      galleryLinks(doc).forEach(function (entry) { all.set(entry.number, entry); });
-      complete += 1;
-      setStatus('正在读取缩略图分页：' + complete + '/' + pageCount);
+  async function collectRange(range) {
+    state.total = totalFrom(document);
+    if (!state.total) throw new Error('无法识别图片总数');
+    await ensurePageSize();
+    var firstPage = Math.floor((range.from - 1) / state.pageSize);
+    var lastPage = Math.floor((range.to - 1) / state.pageSize);
+    var missing = [];
+    for (var page = firstPage; page <= lastPage; page += 1) if (!state.pageCache.has(page)) missing.push(page);
+    var completed = 0;
+    if (missing.length) setStatus('正在读取所需缩略图分页：0/' + missing.length);
+    await pool(missing, Math.min(3, CONCURRENCY), async function (page) {
+      var doc = new DOMParser().parseFromString(await request(galleryPageUrl(page)), 'text/html');
+      var entries = galleryLinks(doc);
+      if (!entries.length) throw new Error('缩略图分页 ' + (page + 1) + ' 没有图片链接');
+      state.pageCache.set(page, entries);
+      setStatus('正在读取所需缩略图分页：' + (++completed) + '/' + missing.length);
       await sleep(REQUEST_DELAY);
     });
-
-    var entries = Array.from(all.values()).sort(function (a, b) { return a.number - b.number; });
-    if (entries.length !== state.total) {
-      throw new Error('应找到 ' + state.total + ' 个图片页，实际找到 ' + entries.length + ' 个');
+    var selected = [];
+    for (var index = firstPage; index <= lastPage; index += 1) {
+      (state.pageCache.get(index) || []).forEach(function (entry) {
+        if (entry.number >= range.from && entry.number <= range.to) selected.push(entry);
+      });
     }
-    return entries;
+    selected.sort(function (a, b) { return a.number - b.number; });
+    var expected = range.to - range.from + 1;
+    if (selected.length !== expected) throw new Error('范围内应找到 ' + expected + ' 个图片页，实际找到 ' + selected.length + ' 个');
+    return selected;
   }
 
   function createCards(entries) {
@@ -303,11 +362,8 @@
     hideOriginalGrid();
 
     try {
-      if (!state.all.length) state.all = await collectAllLinks();
       var range = requestedRange();
-      state.selected = state.all.filter(function (entry) {
-        return entry.number >= range.from && entry.number <= range.to;
-      });
+      state.selected = await collectRange(range);
       createCards(state.selected);
       var preferOriginal = document.getElementById('panda-original').checked;
       setStatus('找到 ' + state.selected.length + ' 张，开始解析图片页…');
@@ -367,8 +423,10 @@
   ['panda-from', 'panda-to'].forEach(function (id) {
     document.getElementById(id).max = state.total || 1;
   });
-  document.getElementById('panda-to').value = state.total || 1;
+  document.getElementById('panda-to').value = Math.min(RANGE_SIZE, state.total || 1);
   hideOriginalGrid();
-  setStatus(state.total ? '检测到 ' + state.total + ' 张图片，即将自动加载…' : '准备加载…');
-  setTimeout(start, 300);
+  updateRangeButtons();
+  setStatus(state.total
+    ? '检测到 ' + state.total + ' 张图片，默认范围 1–' + Math.min(RANGE_SIZE, state.total) + '；确认设置后点击“加载此范围”'
+    : '无法识别图片总数');
 }());
