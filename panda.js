@@ -1,8 +1,8 @@
-/* Panda continuous reader v2026.07.17.3 — e-hentai.org + exhentai.org */
+/* Panda continuous reader v2026.07.20.2 — e-hentai.org + exhentai.org */
 (function () {
   'use strict';
 
-  var PANDA_VERSION = '2026.07.17.3';
+  var PANDA_VERSION = '2026.07.20.2';
   if (window.__pandaReader) {
     var current = document.getElementById('panda-panel');
     if (current) current.scrollIntoView({ behavior: 'smooth' });
@@ -186,7 +186,7 @@
 
     var panel = make('div', { id: 'panda-panel' });
     var row = make('div', { className: 'row' });
-    row.appendChild(make('strong', {}, 'Panda 连续阅读 v' + PANDA_VERSION));
+    row.appendChild(make('strong', {}, 'Panda v' + PANDA_VERSION));
     row.appendChild(make('label', { for: 'panda-from' }, '范围'));
     row.appendChild(make('input', { id: 'panda-from', type: 'number', min: '1', value: '1' }));
     row.appendChild(make('span', {}, '—'));
@@ -289,10 +289,14 @@
     return selected;
   }
 
-  function createCards(entries) {
+  function createCards(entries, append) {
     var list = document.getElementById('panda-list');
-    list.innerHTML = '';
+    var oldNext = document.getElementById('panda-next-loader');
+    if (oldNext) oldNext.remove();
+    if (!append) list.innerHTML = '';
     entries.forEach(function (entry) {
+      var oldCard = document.getElementById('panda-page-' + entry.number);
+      if (oldCard) oldCard.remove();
       var card = make('div', { className: 'panda-card', id: 'panda-page-' + entry.number });
       var link = make('a', { href: entry.pageUrl, target: '_blank', rel: 'noopener' });
       link.appendChild(make('img', {
@@ -304,6 +308,25 @@
       card.appendChild(make('span', { className: 'panda-no' }, String(entry.number)));
       list.appendChild(card);
     });
+  }
+
+  function showNextGroupControl(lastNumber) {
+    var oldNext = document.getElementById('panda-next-loader');
+    if (oldNext) oldNext.remove();
+    if (lastNumber >= state.total) return;
+
+    var nextFrom = lastNumber + 1;
+    var nextTo = Math.min(nextFrom + RANGE_SIZE - 1, state.total);
+    var box = make('div', { id: 'panda-next-loader' });
+    box.style.cssText = 'box-sizing:border-box;margin:18px auto;padding:14px;max-width:980px;' +
+      'border:1px solid #77675d;border-radius:7px;background:#34302d;color:#eee;' +
+      'font:14px/1.5 Arial,sans-serif;text-align:center';
+    box.appendChild(make('span', {}, '下一组：' + nextFrom + '–' + nextTo + ' '));
+    var button = make('button', { type: 'button' }, '加载下一组');
+    button.style.cssText = 'margin-left:10px;padding:6px 14px;cursor:pointer';
+    button.addEventListener('click', loadNextGroup);
+    box.appendChild(button);
+    document.getElementById('panda-list').appendChild(box);
   }
 
   function showFailure(entry, error) {
@@ -352,7 +375,20 @@
     return { from: from, to: to };
   }
 
-  async function start() {
+  function start() {
+    return loadConfiguredRange(false);
+  }
+
+  async function loadNextGroup() {
+    if (state.running) return;
+    var currentRange = requestedRange();
+    if (currentRange.to >= state.total) return;
+    setRange(currentRange.to + 1);
+    document.getElementById('panda-list').innerHTML = '';
+    return loadConfiguredRange(false);
+  }
+
+  async function loadConfiguredRange(append) {
     if (state.running) return;
     state.stopped = false;
     state.failed = [];
@@ -362,19 +398,22 @@
     document.getElementById('panda-retry').disabled = true;
     hideOriginalGrid();
 
+    var range;
     try {
-      var range = requestedRange();
+      range = requestedRange();
       state.selected = await collectRange(range);
-      createCards(state.selected);
+      createCards(state.selected, append);
       var preferOriginal = document.getElementById('panda-original').checked;
       setStatus('找到 ' + state.selected.length + ' 张，开始解析图片页…');
       await pool(state.selected, CONCURRENCY, function (entry) {
         return loadOne(entry, preferOriginal);
       });
       if (state.stopped) setStatus('已停止：完成 ' + state.loaded + '/' + state.selected.length);
-      else if (state.failed.length) {
-        setStatus('加载完成，失败 ' + state.failed.length + ' 张，可点击“重试失败”');
-      } else setStatus('加载完成：' + state.selected.length + ' 张');
+      else {
+        if (state.failed.length) setStatus('加载完成，失败 ' + state.failed.length + ' 张，可点击“重试失败”');
+        else setStatus('加载完成：' + state.selected.length + ' 张');
+        showNextGroupControl(range.to);
+      }
     } catch (error) {
       if (error.name !== 'AbortError') {
         setStatus('运行失败：' + (error.message || error));
