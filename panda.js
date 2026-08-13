@@ -1,8 +1,8 @@
-/* Panda continuous reader v2026.07.20.2 — e-hentai.org + exhentai.org */
+/* Panda continuous reader v2026.08.13.1 — e-hentai.org + exhentai.org */
 (function () {
   'use strict';
 
-  var PANDA_VERSION = '2026.07.20.2';
+  var PANDA_VERSION = '2026.08.13.1';
   if (window.__pandaReader) {
     var current = document.getElementById('panda-panel');
     if (current) current.scrollIntoView({ behavior: 'smooth' });
@@ -24,7 +24,6 @@
     pageCache: new Map(), failed: [], loaded: 0, running: false, stopped: false, controller: null
   };
   var CONCURRENCY = 3;
-  var REQUEST_DELAY = 180;
   var RETRIES = 3;
   var RANGE_SIZE = 40;
 
@@ -275,7 +274,6 @@
       if (!entries.length) throw new Error('缩略图分页 ' + (page + 1) + ' 没有图片链接');
       state.pageCache.set(page, entries);
       setStatus('正在读取所需缩略图分页：' + (++completed) + '/' + missing.length);
-      await sleep(REQUEST_DELAY);
     });
     var selected = [];
     for (var index = firstPage; index <= lastPage; index += 1) {
@@ -297,14 +295,13 @@
     entries.forEach(function (entry) {
       var oldCard = document.getElementById('panda-page-' + entry.number);
       if (oldCard) oldCard.remove();
-      var card = make('div', { className: 'panda-card', id: 'panda-page-' + entry.number });
-      var link = make('a', { href: entry.pageUrl, target: '_blank', rel: 'noopener' });
-      link.appendChild(make('img', {
-        alt: '第 ' + entry.number + ' 页（等待加载）',
-        loading: 'lazy',
-        decoding: 'async'
+      var card = make("div", { className: "panda-card", id: "panda-page-" + entry.number });
+      card.appendChild(make("img", {
+        alt: "第 " + entry.number + " 页（等待加载）",
+        loading: "eager",
+        decoding: "async",
+        fetchpriority: "high"
       }));
-      card.appendChild(link);
       card.appendChild(make('span', { className: 'panda-no' }, String(entry.number)));
       list.appendChild(card);
     });
@@ -336,8 +333,8 @@
     if (image) image.remove();
     var old = card.querySelector('.panda-error');
     if (old) old.remove();
-    card.querySelector('a').appendChild(make('div', { className: 'panda-error' },
-      '第 ' + entry.number + ' 页加载失败：' + (error.message || error) + '（点击打开图片页）'));
+    card.appendChild(make("div", { className: "panda-error" },
+      "第 " + entry.number + " 页加载失败：" + (error.message || error)));
   }
 
   function updateProgress() {
@@ -364,7 +361,6 @@
     } finally {
       state.loaded += 1;
       updateProgress();
-      await sleep(REQUEST_DELAY);
     }
   }
 
@@ -445,8 +441,9 @@
       var error = card && card.querySelector('.panda-error');
       if (error) {
         error.remove();
-        card.querySelector('a').appendChild(make('img', {
-          alt: '第 ' + entry.number + ' 页（重试中）', loading: 'lazy', decoding: 'async'
+        card.appendChild(make("img", {
+          alt: "第 " + entry.number + " 页（重试中）",
+          loading: "eager", decoding: "async", fetchpriority: "high"
         }));
       }
     });
