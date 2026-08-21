@@ -1,8 +1,8 @@
-/* Panda continuous reader v2026.08.13.1 — e-hentai.org + exhentai.org */
+/* Panda continuous reader v2026.08.21.1 — e-hentai.org + exhentai.org */
 (function () {
   'use strict';
 
-  var PANDA_VERSION = '2026.08.13.1';
+  var PANDA_VERSION = '2026.08.21.1';
   if (window.__pandaReader) {
     var current = document.getElementById('panda-panel');
     if (current) current.scrollIntoView({ behavior: 'smooth' });
@@ -21,7 +21,8 @@
 
   var state = {
     gid: match[1], token: match[2], total: 0, selected: [], pageSize: 0,
-    pageCache: new Map(), failed: [], loaded: 0, running: false, stopped: false, controller: null
+    pageCache: new Map(), failed: [], loaded: 0, running: false, stopped: false,
+    controller: null, worker: null, workerDone: null
   };
   var CONCURRENCY = 3;
   var RETRIES = 3;
@@ -400,10 +401,8 @@
       state.selected = await collectRange(range);
       createCards(state.selected, append);
       var preferOriginal = document.getElementById('panda-original').checked;
-      setStatus('找到 ' + state.selected.length + ' 张，开始解析图片页…');
-      await pool(state.selected, CONCURRENCY, function (entry) {
-        return loadOne(entry, preferOriginal);
-      });
+      setStatus('找到 ' + state.selected.length + ' 张，正在后台解析并预取大图…');
+      await loadInBackground(state.selected, preferOriginal);
       if (state.stopped) setStatus('已停止：完成 ' + state.loaded + '/' + state.selected.length);
       else {
         if (state.failed.length) setStatus('加载完成，失败 ' + state.failed.length + ' 张，可点击“重试失败”');
@@ -421,10 +420,185 @@
     }
   }
 
+  function pandaWorkerMain() {
+    'use strict';
+
+    var stopped = false;
+    var controllers = [];
+
+    function decodeHtml(value) {
+      return value.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+    }
+
+    function attribute(tag, name) {
+      var pattern = new RegExp('\\b' + name + '\\s*=\\s*["\\\']([^"\\\']+)["\\\']', 'i');
+      var found = tag.match(pattern);
+      return found ? decodeHtml(found[1]) : '';
+    }
+
+    function imageUrlFromHtml(html, pageUrl, preferOriginal) {
+      var originalTag = (html.match(/<a\b[^>]*href=["'][^"']*(?:\/fullimg\/|\/fullimg\.php)[^"']*["'][^>]*>/i) || [])[0];
+      var imageTag = (html.match(/<img\b[^>]*\bid=["']img["'][^>]*>/i) || [])[0];
+      var source = preferOriginal && originalTag ? attribute(originalTag, 'href') : '';
+      if (!source && imageTag) source = attribute(imageTag, 'src');
+      if (!source && originalTag) source = attribute(originalTag, 'href');
+      if (!source) throw new Error('图片页中找不到 #img 或原图链接');
+      return new URL(source, pageUrl).href;
+    }
+
+    async function requestText(url, attempt) {
+      attempt = attempt || 1;
+      var controller = new AbortController();
+      controllers.push(controller);
+      try {
+        var response = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+          headers: { Accept: 'text/html,application/xhtml+xml' }
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var html = await response.text();
+        if (!html || /temporarily banned/i.test(html)) throw new Error('站点返回限制页面');
+        return html;
+      } catch (error) {
+        if (stopped || error.name === 'AbortError' || attempt >= 3) throw error;
+        return requestText(url, attempt + 1);
+      } finally {
+        var index = controllers.indexOf(controller);
+        if (index >= 0) controllers.splice(index, 1);
+      }
+    }
+
+    async function prefetchImage(url) {
+      var controller = new AbortController();
+      controllers.push(controller);
+      try {
+        await fetch(url, {
+          mode: 'no-cors',
+          credentials: 'include',
+          cache: 'force-cache',
+          signal: controller.signal
+        });
+        return true;
+      } catch (_) {
+        return false;
+      } finally {
+        var index = controllers.indexOf(controller);
+        if (index >= 0) controllers.splice(index, 1);
+      }
+    }
+
+    async function runEntry(entry, preferOriginal) {
+      try {
+        var html = await requestText(entry.pageUrl);
+        var imageUrl = imageUrlFromHtml(html, entry.pageUrl, preferOriginal);
+        var prefetched = await prefetchImage(imageUrl);
+        postMessage({ type: 'result', entry: entry, imageUrl: imageUrl, prefetched: prefetched });
+      } catch (error) {
+        if (!stopped) postMessage({ type: 'error', entry: entry, message: error.message || String(error) });
+      }
+    }
+
+    async function run(entries, concurrency, preferOriginal) {
+      var cursor = 0;
+      async function consume() {
+        while (!stopped && cursor < entries.length) {
+          var entry = entries[cursor];
+          cursor += 1;
+          await runEntry(entry, preferOriginal);
+        }
+      }
+      var jobs = [];
+      for (var i = 0; i < Math.min(concurrency, entries.length); i += 1) jobs.push(consume());
+      await Promise.all(jobs);
+      if (!stopped) postMessage({ type: 'done' });
+    }
+
+    onmessage = function (event) {
+      if (event.data.type === 'start') {
+        stopped = false;
+        run(event.data.entries, event.data.concurrency, event.data.preferOriginal);
+      } else if (event.data.type === 'stop') {
+        stopped = true;
+        controllers.slice().forEach(function (controller) { controller.abort(); });
+      }
+    };
+  }
+
+  function applyWorkerResult(message) {
+    state.loaded += 1;
+    if (message.type === 'result') {
+      var image = document.querySelector('#panda-page-' + message.entry.number + ' img');
+      if (image) {
+        image.alt = '第 ' + message.entry.number + ' 页';
+        image.src = message.imageUrl;
+      }
+    } else {
+      state.failed.push(message.entry);
+      showFailure(message.entry, new Error(message.message));
+    }
+    updateProgress();
+  }
+
+  function loadInBackground(entries, preferOriginal) {
+    if (typeof Worker !== 'function' || typeof Blob !== 'function') {
+      setStatus('浏览器不支持后台 Worker，已改用普通加载');
+      return pool(entries, CONCURRENCY, function (entry) { return loadOne(entry, preferOriginal); });
+    }
+
+    return new Promise(function (resolve, reject) {
+      var workerUrl;
+      try {
+        workerUrl = URL.createObjectURL(new Blob([
+          '(' + pandaWorkerMain.toString() + ')();'
+        ], { type: 'text/javascript' }));
+        state.worker = new Worker(workerUrl);
+        URL.revokeObjectURL(workerUrl);
+      } catch (error) {
+        if (workerUrl) URL.revokeObjectURL(workerUrl);
+        setStatus('后台 Worker 被浏览器阻止，已改用普通加载');
+        pool(entries, CONCURRENCY, function (entry) { return loadOne(entry, preferOriginal); })
+          .then(resolve, reject);
+        return;
+      }
+
+      state.workerDone = resolve;
+      state.worker.onmessage = function (event) {
+        if (event.data.type === 'result' || event.data.type === 'error') applyWorkerResult(event.data);
+        else if (event.data.type === 'done') {
+          state.worker.terminate();
+          state.worker = null;
+          state.workerDone = null;
+          resolve();
+        }
+      };
+      state.worker.onerror = function (event) {
+        if (state.worker) state.worker.terminate();
+        state.worker = null;
+        state.workerDone = null;
+        reject(new Error(event.message || '后台 Worker 运行失败'));
+      };
+      state.worker.postMessage({
+        type: 'start',
+        entries: entries,
+        concurrency: CONCURRENCY,
+        preferOriginal: preferOriginal
+      });
+    });
+  }
+
   function stop() {
     state.stopped = true;
     if (state.controller) state.controller.abort();
-    setStatus('正在停止…');
+    if (state.worker) {
+      state.worker.postMessage({ type: 'stop' });
+      state.worker.terminate();
+      state.worker = null;
+      if (state.workerDone) state.workerDone();
+      state.workerDone = null;
+    }
+    setStatus('已停止：完成 ' + state.loaded + '/' + state.selected.length);
   }
 
   async function retryFailed() {
@@ -447,9 +621,7 @@
         }));
       }
     });
-    await pool(retry, CONCURRENCY, function (entry) {
-      return loadOne(entry, document.getElementById('panda-original').checked);
-    });
+    await loadInBackground(retry, document.getElementById('panda-original').checked);
     setControls(false);
     document.getElementById('panda-retry').disabled = !state.failed.length;
     setStatus(state.failed.length ? '重试后仍失败 ' + state.failed.length + ' 张' : '重试完成，全部成功');
